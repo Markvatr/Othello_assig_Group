@@ -8,7 +8,9 @@ import com.eudycontreras.othello.controllers.AgentController;
 import com.eudycontreras.othello.enumerations.PlayerTurn;
 import com.eudycontreras.othello.models.GameBoardState;
 
-public class Alpha_beta_move {
+public class Alpha_Beta_move {
+
+	
 	/**
 	 * Here is where our Alpha Beta pruning will be implemented
 	 * @param gameState

@@ -27,7 +27,7 @@ public class Agent_Alpha_Beta extends Agent{
 	public AgentMove getMove(GameBoardState gameState) {
 		int waitTime = UserSettings.MIN_SEARCH_TIME; // 1.5 seconds
 		ThreadManager.pause(TimeSpan.millis(waitTime)); // Pauses execution for the wait time to cause delay
-		return Alpha_beta_move.getMove(gameState, playerTurn);
+		return Alpha_Beta_move.getMove(gameState, playerTurn);
 	}
 
 }
