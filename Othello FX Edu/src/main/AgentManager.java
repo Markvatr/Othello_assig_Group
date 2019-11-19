@@ -5,6 +5,7 @@ import com.eudycontreras.othello.enumerations.BoardCellState;
 import com.eudycontreras.othello.enumerations.PlayerTurn;
 import com.eudycontreras.othello.models.GameBoardCell;
 
+import Alpha_beta.Agent_Alpha_Beta;
 import javafx.application.Application;
 import javafx.stage.Stage;
 
