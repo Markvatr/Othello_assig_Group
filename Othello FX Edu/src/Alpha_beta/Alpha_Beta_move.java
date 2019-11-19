@@ -9,6 +9,11 @@ import com.eudycontreras.othello.enumerations.PlayerTurn;
 import com.eudycontreras.othello.models.GameBoardState;
 
 public class Alpha_Beta_move {
+	
+	private int beta = Integer.MAX_VALUE, alpha = Integer.MIN_VALUE;
+	
+	
+	
 
 	
 	/**
@@ -32,6 +37,16 @@ public class Alpha_Beta_move {
 		
 		return null;
 	}
+	
+	private static int evaluate(GameBoardState currentState, PlayerTurn turn, MoveWrapper move) {
+		
+		
+		
+		
+		return 0;
+	}
+	
+	
 	
 	
 	
