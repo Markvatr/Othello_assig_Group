@@ -10,101 +10,158 @@ import com.eudycontreras.othello.models.GameBoardState;
 import com.eudycontreras.othello.utilities.GameTreeUtility;
 
 public class Alpha_Beta_move {
+	/**
+	 * Final variables that define how long a move may take/when to stop
+	 */
+	private static final long ABORT_TIME_THRESHOLD = 100;
+	private static final long TIMEOUT = 5000;
 	
-	private static int depth = 0;
+	/**
+	 * Variables used for tracking
+	 * Maxdepth defines an arbitrary depth that we are trying to reach
+	 * startTime defines when we started the current move
+	 * bestMove stores the temporary best move that the agent can make
+	 */
+	private static int Maxdepth = 0;
+	private static long startTime = 0;
+	private static ObjectiveWrapper bestMove = null;
+	/**
+	 * Output variables
+	 */
 	private static int pruned = 0;
-	private static int NodesSearched = 0;
+	private static int nodesSearched = 0;
+	private static int depthReached = 0;
+	private static long timeTaken = 0;
 	
 
 	
 	/**
-	 * Here is where our Alpha Beta pruning will be implemented
+	 * Start position for our alpha beta pruning
 	 * @param gameState
 	 * @param playerTurn
 	 * @return
 	 */
-	public static MoveWrapper getMove(GameBoardState currentState, PlayerTurn turn, int ply) {
-		//Fetch all the possible moves for the current player given the current state	
-		depth = ply;
+	public static MoveWrapper getMove(GameBoardState state, PlayerTurn player, int depth) {
+		//Start by setting/resetting our tracking vars
+		startTime = System.currentTimeMillis();
+		Maxdepth = depth;
 		pruned = 0;
-		NodesSearched = 0;
-		return alphaBetaPruning(currentState, turn, ply);
-	}
+		nodesSearched = 0;
 
-	private static MoveWrapper alphaBetaPruning(GameBoardState currentState, PlayerTurn turn, int ply) {
-		List<ObjectiveWrapper> agentMoves = getAvailableMoves(currentState, turn);
-		ObjectiveWrapper returnMove;
-		if (!agentMoves.isEmpty()) {
-			returnMove = agentMoves.get(0);
-		}else{
+		//Can we make a move? if we can't then we just pass to the other player
+		if (getAvailableMoves(state, player).isEmpty()) {
 			return new MoveWrapper(null);
 		}
-		double bestScore = Double.MIN_VALUE;
+		//Try finding the best move from our starting state
+		maxScoreAlphaBeta(state, player, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, 0);
+		System.out.println("\n" +
+			"Move reached after : " + timeTaken + "ms\n" +
+			"Search depth    	: " + depthReached +"\n" +
+			"Nodes reached   	: " + nodesSearched + "\n" +
+			"Branches pruned 	: " + pruned);
+		return new MoveWrapper(bestMove);
+	}
 
-		for (ObjectiveWrapper objWrp : agentMoves) {
-			NodesSearched++;
-			//possible fuck up later
-			GameBoardState tempState = AgentController.getNewState(currentState, objWrp);
-			//Ah recursion goes here
-			double score = minScoreAlphaBeta(tempState,getCounterPlayer(turn), ply, Double.MAX_VALUE, Double.MIN_VALUE);
-			if (score > bestScore) {
-				bestScore = score;
-				returnMove = objWrp;
+	/**
+	 * Maxima score (our node)
+	 * @param state the current boardstate
+	 * @param player the current players turn
+	 * @param alpha our alpha value
+	 * @param beta our beta value
+	 * @param depth the current depth of search
+	 * @return the Worth of this node
+	 */
+	private static double maxScoreAlphaBeta(GameBoardState state, PlayerTurn player, double alpha, double beta, int depth) {
+		//Are we allowed to continue searching?
+		if(depth == Maxdepth || isTerminal(state, player) || !timeLeft()){
+			return heuristicEvaluation(state);
+		}
+		//Ternary operator for output variable
+		depthReached = ( (depth > depthReached) ? depth : depthReached );
+
+		List<ObjectiveWrapper> moves = getAvailableMoves(state, player);
+
+		//Do we have a legal move?
+		if (moves.isEmpty()) {
+			//If we don't then we continue the pruning but from the oponents perspective
+			return minScoreAlphaBeta(state, getCounterPlayer(player), alpha, beta, depth + 1);
+		}
+
+		//Temporary storage for our best move
+		ObjectiveWrapper localBestMove = null;
+
+		double bestResult = Double.NEGATIVE_INFINITY;
+
+		//For each move we can make
+		for (ObjectiveWrapper coord : moves) {
+
+			nodesSearched++;
+
+			//Get the boardstate after we make said move
+			GameBoardState newState = AgentController.getNewState(state, coord);
+
+			//Calculate alpha based on recursion 
+			alpha = minScoreAlphaBeta(newState, getCounterPlayer(player), alpha, beta, depth + 1);
+
+			//If our new alpha is higher than our previous neigbour then overwrite it
+			if (alpha > bestResult) {
+				localBestMove = coord;
+				bestResult = alpha;
+			}
+			//If our alpha is higher than our beta value then prune the branch
+			if (alpha >= beta) {
+				pruned++;
+				break;
 			}
 		}
-		System.out.println("Search depth: " + depth + "\n" + "Number of pruned trees: " + pruned + "\n" + "Number of searched nodes: " + NodesSearched + "\n\n");
-		return new MoveWrapper(returnMove);
+
+		bestMove = localBestMove;
+		return alpha;
 	}
 	
-	private static double minScoreAlphaBeta(GameBoardState tempState, PlayerTurn player, int ply, double alpha, double beta) {
-		if(ply == 0){
-			return heuristicEvaluation(tempState);
+	
+	private static double minScoreAlphaBeta(GameBoardState state, PlayerTurn player, double alpha, double beta, int depth) {
+		if(depth == Maxdepth || isTerminal(state, player) || !timeLeft()){
+			return heuristicEvaluation(state);
 		}
-		double bestScore = Double.MAX_VALUE;
-		boolean oncePerLoop = true;
-		for (ObjectiveWrapper objWrp : getAvailableMoves(tempState, player) ) {
-			NodesSearched++;
-			if (oncePerLoop) {
-				oncePerLoop = false;
-			}
-			GameBoardState minState = AgentController.getNewState(tempState, objWrp);
-			double score = maxScoreAlphaBeta(minState, getCounterPlayer(player), ply-1, alpha, beta);
-			if (score < bestScore) {
-				bestScore = score;
-			}
-			if (bestScore <= alpha) {
-				pruned++;
-				return bestScore;
-			}
-			beta = Math.min(beta, bestScore);
+		//Ternary operator for output variable
+		depthReached = ( (depth > depthReached) ? depth : depthReached );
+
+		List<ObjectiveWrapper> moves = getAvailableMoves(state, player);
+
+		//Do we have a legal move?
+		if (moves.isEmpty()) {
+			return maxScoreAlphaBeta(state, getCounterPlayer(player), alpha, beta, depth + 1);
 		}
-		return bestScore;	
+
+		//For each move we can make
+		for (ObjectiveWrapper coords : moves) {
+			nodesSearched++;
+			
+			//Get the boardstate after we make said move
+			GameBoardState newState = AgentController.getNewState(state, coords);
+
+			//Find the smalest value of the boardstates branch values
+			beta = Math.min(beta, maxScoreAlphaBeta(newState, player, alpha, beta, depth + 1) );
+
+			//If our beta value is smaler that our current alpha value then prune the branch
+			if (beta <= alpha) {
+				break;
+			}
+		}
+		return beta;
+
 	}
-
-	private static double maxScoreAlphaBeta(GameBoardState tempState, PlayerTurn player, int ply, double alpha, double beta) {
-
-		if(ply == 0){
-			return heuristicEvaluation(tempState);
+	/**
+	 * Do we still have time to compute?
+	 * @return boolean
+	 */
+	private static boolean timeLeft() {
+		if ( TIMEOUT - (System.currentTimeMillis() - startTime) <= ABORT_TIME_THRESHOLD ) {
+			timeTaken = (System.currentTimeMillis() - startTime);
+			return false;
 		}
-		double bestScore = Double.MIN_VALUE;
-		boolean oncePerLoop = true;
-		for (ObjectiveWrapper objWrp : getAvailableMoves(tempState, player) ) {
-			NodesSearched++;
-			if (oncePerLoop) {
-				oncePerLoop = false;
-			}
-			GameBoardState maxState = AgentController.getNewState(tempState, objWrp);
-			double score = minScoreAlphaBeta(maxState, getCounterPlayer(player), ply-1, alpha, beta);
-			if (score > bestScore) {
-				bestScore = score;
-			}
-			if (bestScore >= beta) {
-				pruned++;
-				return bestScore;
-			}
-			alpha = Math.max(alpha, bestScore);
-		}
-		return bestScore;
+		return true;
 	}
 
 	private static PlayerTurn getCounterPlayer(PlayerTurn player) {
@@ -112,8 +169,8 @@ public class Alpha_Beta_move {
 	}
 
 	/**
-	 * Returns a value that determines the value of a given gamestate
-	 * 
+	 * Returns the value of a given gamestate
+	 * Uses the method from the given framework
 	 * @param currentState
 	 * @return double evaluation
 	 */
@@ -126,10 +183,20 @@ public class Alpha_Beta_move {
 	 * Uses the method from the given framework 
 	 * @param currentState
 	 * @param turn
-	 * @return
+	 * @return List<ObjectiveWrapper> moves
 	 */
 	private static List<ObjectiveWrapper> getAvailableMoves(GameBoardState currentState, PlayerTurn turn) {
 		return AgentController.getAvailableMoves(currentState, turn);
+	}
+	/**
+	 * Are we at a terminal node?
+	 * Uses the method from the given framework 
+	 * @param state
+	 * @param player
+	 * @return boolean
+	 */
+	private static boolean isTerminal(GameBoardState state, PlayerTurn player){
+		return AgentController.isTerminal(state, player);
 	}
 	
 }
