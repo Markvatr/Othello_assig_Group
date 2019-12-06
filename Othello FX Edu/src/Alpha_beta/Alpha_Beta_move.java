@@ -119,7 +119,15 @@ public class Alpha_Beta_move {
 		return alpha;
 	}
 	
-	
+	/**
+	 * minimum score (not our node)
+	 * @param state
+	 * @param player
+	 * @param alpha
+	 * @param beta
+	 * @param depth
+	 * @return
+	 */
 	private static double minScoreAlphaBeta(GameBoardState state, PlayerTurn player, double alpha, double beta, int depth) {
 		if(depth == Maxdepth || isTerminal(state, player) || !timeLeft()){
 			return heuristicEvaluation(state);
@@ -137,7 +145,7 @@ public class Alpha_Beta_move {
 		//For each move we can make
 		for (ObjectiveWrapper coords : moves) {
 			nodesSearched++;
-			
+
 			//Get the boardstate after we make said move
 			GameBoardState newState = AgentController.getNewState(state, coords);
 
